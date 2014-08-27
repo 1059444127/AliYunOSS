@@ -36,6 +36,7 @@
             this.lbInfo = new System.Windows.Forms.Label();
             this.listBox = new System.Windows.Forms.ListBox();
             this.btnStart = new System.Windows.Forms.Button();
+            this.btnDelete = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // btnUpLoad
@@ -100,6 +101,7 @@
             this.listBox.Name = "listBox";
             this.listBox.Size = new System.Drawing.Size(417, 232);
             this.listBox.TabIndex = 6;
+            this.listBox.SelectedIndexChanged += new System.EventHandler(this.listBox_SelectedIndexChanged);
             // 
             // btnStart
             // 
@@ -112,11 +114,24 @@
             this.btnStart.UseVisualStyleBackColor = false;
             this.btnStart.Click += new System.EventHandler(this.btnStart_Click);
             // 
+            // btnDelete
+            // 
+            this.btnDelete.BackColor = System.Drawing.SystemColors.Control;
+            this.btnDelete.Enabled = false;
+            this.btnDelete.Location = new System.Drawing.Point(276, 319);
+            this.btnDelete.Name = "btnDelete";
+            this.btnDelete.Size = new System.Drawing.Size(60, 25);
+            this.btnDelete.TabIndex = 8;
+            this.btnDelete.Text = "删除";
+            this.btnDelete.UseVisualStyleBackColor = false;
+            this.btnDelete.Click += new System.EventHandler(this.btnDelete_Click);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(441, 354);
+            this.Controls.Add(this.btnDelete);
             this.Controls.Add(this.btnStart);
             this.Controls.Add(this.listBox);
             this.Controls.Add(this.lbInfo);
@@ -140,6 +155,7 @@
         private System.Windows.Forms.Label lbInfo;
         private System.Windows.Forms.ListBox listBox;
         private System.Windows.Forms.Button btnStart;
+        private System.Windows.Forms.Button btnDelete;
     }
 }
 

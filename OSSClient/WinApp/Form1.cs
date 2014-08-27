@@ -28,6 +28,7 @@ namespace WinApp
         delegate void SetTextCallback(string text);
 
         static string path = "";
+        static string ID = "";
 
         public Form1()
         {
@@ -44,10 +45,10 @@ namespace WinApp
 
         void bw_DoWork(object sender, DoWorkEventArgs e)
         { // 这被工作线程调用
-            mutiPartUpload();
+            mutiPartUpload(e);
         }
 
-        public void mutiPartUpload()
+        public void mutiPartUpload(DoWorkEventArgs e)
         {
             for (; ; )
             {
@@ -55,15 +56,23 @@ namespace WinApp
 
                 if (string.IsNullOrEmpty(path))
                 {
-                    break;
+                    return;
+                }
+
+                //判断是否取消操作  
+                if (bw.CancellationPending)
+                {
+                    e.Cancel = true; //这里才真正取消  
+                    SetText("已取消，取消速度慢以防止产生碎片");
+                    return;
                 }
 
                 key = Guid.NewGuid().ToString() + path.Substring(path.LastIndexOf('.'));
 
                 OssClient ossClient = new OssClient(endPoint, accessKeyID, accessKeySecret);
-
+                
                 InitiateMultipartUploadRequest initRequest =
-                                new InitiateMultipartUploadRequest(bucketName, key);
+                                new InitiateMultipartUploadRequest(bucketName, "bbb1\\" + key);
                 InitiateMultipartUploadResult initResult = ossClient.InitiateMultipartUpload(initRequest);
 
 
@@ -84,8 +93,8 @@ namespace WinApp
 
                 for (int i = 0; i < partCount; i++)
                 {
-                    Bar.Value = (i * 100) / partCount;
-                    UploadInfo(Bar.Value.ToString());
+                    //Bar.Value = (i * 100) / partCount;
+                    //UploadInfo(Bar.Value.ToString());
 
                     // 获取文件流 
                     FileStream fis = new FileStream(partFile.FullName, FileMode.Open);
@@ -100,7 +109,7 @@ namespace WinApp
                             partSize : partFile.Length - skipBytes;
 
                     // 创建UploadPartRequest，上传分块 
-                    UploadPartRequest uploadPartRequest = new UploadPartRequest(bucketName, key, initResult.UploadId);
+                    UploadPartRequest uploadPartRequest = new UploadPartRequest(bucketName, "bbb1\\" + key, initResult.UploadId);
                     uploadPartRequest.InputStream = fis;
                     uploadPartRequest.PartSize = size;
                     uploadPartRequest.PartNumber = (i + 1);
@@ -115,7 +124,7 @@ namespace WinApp
                     manualReset.WaitOne();//如果ManualResetEvent的初始化为终止状态（true），那么该方法将一直工作，直到收到Reset信号。然后，直到收到Set信号，就继续工作。
                 }
 
-                CompleteMultipartUploadRequest completeReq = new CompleteMultipartUploadRequest(bucketName, key, initResult.UploadId);
+                CompleteMultipartUploadRequest completeReq = new CompleteMultipartUploadRequest(bucketName, "bbb1\\" + key, initResult.UploadId);
                 foreach (PartETag partETag in partETags)
                 {
                     completeReq.PartETags.Add(partETag);
@@ -125,13 +134,13 @@ namespace WinApp
                 //完成分块上传 
                 CompleteMultipartUploadResult completeResult = ossClient.CompleteMultipartUpload(completeReq);
 
-                Bar.Value = 100;
-                UploadInfo(Bar.Value.ToString());
+                //Bar.Value = 100;
+                //UploadInfo(Bar.Value.ToString());
 
                 // 返回最终文件的MD5，用于用户进行校验 
                 //Console.WriteLine(completeResult.ETag);
 
-                setListItemValue();
+                setListItemValue(key);
             }
         }
 
@@ -202,12 +211,13 @@ namespace WinApp
                 if (item.Value == "0")
                 {
                     path = item.Name;
+                    ID = item.ID;
                     break;
                 }
             }
         }
 
-        void setListItemValue()
+        void setListItemValue(string Token)
         {
             List<ListItem> list = new List<ListItem>();
             bool getValue = false;
@@ -219,6 +229,7 @@ namespace WinApp
                     getValue = true;
                     item.Value = "1";
                     item.Name += "[完成]";
+                    item.Token = Token;
                 }
                 list.Add(item);
             }
@@ -237,20 +248,32 @@ namespace WinApp
                 list.Add(item);
             }
 
-            list.Add(new ListItem(Name, "0"));
+            list.Add(new ListItem(Name, "0", "", Guid.NewGuid().ToString()));
 
             listBox.DisplayMember = "Name";
             listBox.ValueMember = "Value";
             listBox.DataSource = list;
         }
+
+        private void listBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            btnDelete.Enabled = true;
+        }
+
+        private void btnDelete_Click(object sender, EventArgs e)
+        {
+
+        }
     }
 
     public class ListItem
     {
-        public ListItem(string Name, string Value)
+        public ListItem(string Name, string Value, string Token, string ID)
         {
             this.Name = Name;
             this.Value = Value;
+            this.Token = Token;
+            this.ID = ID;
         }
 
         public string Name
@@ -260,6 +283,18 @@ namespace WinApp
         }
 
         public string Value
+        {
+            get;
+            set;
+        }
+
+        public string Token
+        {
+            get;
+            set;
+        }
+
+        public string ID
         {
             get;
             set;

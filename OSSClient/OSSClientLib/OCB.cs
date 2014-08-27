@@ -24,6 +24,7 @@ namespace OSSClientLib
         static string accessKeySecret = "sQx9gDGpM9Tep76CuSAafYafQQxe8k";
         static string bucketName = "aliyunoss001";
         static string key = "";
+        static string Html = "http://aliyunoss001.oss-cn-beijing.aliyuncs.com/";
 
         BackgroundWorker bw = new BackgroundWorker();
         private ManualResetEvent manualReset = new ManualResetEvent(true);
@@ -31,8 +32,11 @@ namespace OSSClientLib
 
         static string path = "";
 
+        public string dir = "";
+
         private IHTMLWindow2 temphtml = null;
         private string functionstr = "";
+
 
         public OCB()
         {
@@ -64,13 +68,6 @@ namespace OSSClientLib
                     break;
                 }
 
-                //判断是否取消操作  
-                if (bw.CancellationPending)
-                {
-                    e.Cancel = true; //这里才真正取消  
-                    SetText("已取消，取消速度慢以防止产生碎片");
-                    break;
-                }
 
                 key = Guid.NewGuid().ToString() + path.Substring(path.LastIndexOf('.'));
 
@@ -98,6 +95,15 @@ namespace OSSClientLib
 
                 for (int i = 0; i < partCount; i++)
                 {
+
+                    //判断是否取消操作  
+                    if (bw.CancellationPending)
+                    {
+                        e.Cancel = true; //这里才真正取消  
+                        SetText("已取消，取消速度慢以防止产生碎片");
+                        return;
+                    }
+
                     Bar.Value = (i * 100) / partCount;
                     UploadInfo(Bar.Value.ToString());
 
@@ -147,7 +153,12 @@ namespace OSSClientLib
 
                 setListItemValue(key);
 
-                temphtml.execScript(functionstr + "('" + path + "|" + key + "')", "JScript");
+                if (!string.IsNullOrEmpty(Dir))
+                {
+                    CopyObjectRequest copyObjectRequest = new CopyObjectRequest(bucketName, key, bucketName, Dir + "/" + key);
+                    ossClient.CopyObject(copyObjectRequest);
+                    ossClient.DeleteObject(bucketName, key);
+                }
             }
 
 
@@ -209,13 +220,13 @@ namespace OSSClientLib
             bw.WorkerSupportsCancellation = true;
             bw.DoWork += bw_DoWork;
             bw.RunWorkerAsync("");
-            //bw.RunWorkerCompleted += bw_RunWorkerCompleted;
+            bw.RunWorkerCompleted += bw_RunWorkerCompleted;
         }
 
-        //private void bw_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
-        //{
-        //    temphtml.execScript(functionstr + "('" + getListItems() + "')", "JScript");
-        //}
+        private void bw_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        {
+            temphtml.execScript(functionstr + "('" + getListItems() + "')", "JScript");
+        }
 
         void getListItemName()
         {
@@ -275,7 +286,10 @@ namespace OSSClientLib
             for (int i = 0; i < listBox.Items.Count; i++)
             {
                 ListItem item = listBox.Items[i] as ListItem;
-                data += "," + item.Name.Substring(item.Name.LastIndexOf("\\") + 1).Replace("[完成]", "") + "|" + item.Token;
+                if (!string.IsNullOrEmpty(item.Token))
+                {
+                    data += "," + item.Name.Substring(item.Name.LastIndexOf("\\") + 1).Replace("[完成]", "") + "|" + Html + (string.IsNullOrEmpty(Dir) ? "" : (Dir + "/")) + item.Token;
+                }
             }
             if (data.Length > 0)
             {
@@ -296,6 +310,30 @@ namespace OSSClientLib
                 temphtml = null;
                 functionstr = "";
                 MessageBox.Show("注册脚本失败！");
+            }
+
+            if (!string.IsNullOrEmpty(Dir))
+            {
+                OssClient ossClient = new OssClient(endPoint, accessKeyID, accessKeySecret);
+                MemoryStream s = new MemoryStream();
+                ObjectMetadata oMetaData = new ObjectMetadata();
+                ossClient.PutObject(bucketName, Dir + "/1", s, oMetaData);
+            }
+            else
+            {
+                MessageBox.Show("注册脚本失败！");
+            }
+        }
+
+        public string Dir
+        {
+            get
+            {
+                return dir;
+            }
+            set
+            {
+                dir = value;
             }
         }
     }
